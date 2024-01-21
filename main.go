@@ -33,39 +33,39 @@ func readFile(filePath string) (string, error) {
     return string(buffer), nil
 }
 
-type TokenKind int
+type ElemKind int
 
 const (
-    TokenUnknown TokenKind = iota
-    TokenHeading
-    TokenParagraph
-    TokenBlockQuote
-    TokenCount
+    ElemUnknown ElemKind = iota
+    ElemHeading
+    ElemParagraph
+    ElemBlockQuote
+    ElemCount
 )
 
-func (kind TokenKind) toString() string {
-    if TokenCount > 4 {
+func (kind ElemKind) toString() string {
+    if ElemCount > 4 {
 	panic("missing name of new token added")
     }
     switch kind {
-	case TokenHeading: return "TokenHeading"
-	case TokenParagraph: return "TokenParagraph"
-	case TokenBlockQuote: return "TokenBlockQuote"
+	case ElemHeading: return "ElemHeading"
+	case ElemParagraph: return "ElemParagraph"
+	case ElemBlockQuote: return "ElemBlockQuote"
     }
-    return "TokenUnknown" 
+    return "ElemUnknown" 
 }
 
-type Token struct {
-    kind  TokenKind
+type Element struct {
+    kind  ElemKind
     level int
     value string
 }
 
-func (t *Token) toString() string {
-    return fmt.Sprintf("Token {%s, %d, '%s'}\n", t.kind.toString(), t.level, t.value)
+func (t *Element) toString() string {
+    return fmt.Sprintf("Element {%s, %d, '%s'}\n", t.kind.toString(), t.level, t.value)
 }
 
-func parseHeading(lines []string) ([]string, Token) {
+func parseHeading(lines []string) ([]string, Element) {
     line := lines[0]
     i := 0
     for ; i < len(line); i += 1 {
@@ -77,12 +77,12 @@ func parseHeading(lines []string) ([]string, Token) {
     if i > 6 {
 	// note: Not so sure about how handle more than 6 hashtags for titles
 	// it should be handled as a paragraph? or a error? should it be ignored?
-	return lines, Token{TokenUnknown, 0, ""}
+	return lines, Element{ElemUnknown, 0, ""}
     }
-    return lines, Token{TokenHeading, i, strings.Trim(line[i:], " ")}
+    return lines, Element{ElemHeading, i, strings.Trim(line[i:], " ")}
 }
 
-func parseBlockQuote(lines []string) ([]string, Token) {
+func parseBlockQuote(lines []string) ([]string, Element) {
     value := ""
     newLine := false
     for len(lines) > 0 && len(lines[0]) > 0 && lines[0][0] == '>' {
@@ -99,10 +99,10 @@ func parseBlockQuote(lines []string) ([]string, Token) {
 	value += lineValue
 	lines = lines[1:]
     }
-    return lines[1:], Token{TokenBlockQuote, 0, value}
+    return lines[1:], Element{ElemBlockQuote, 0, value}
 }
 
-func parseParagraph(lines []string) ([]string, Token) {
+func parseParagraph(lines []string) ([]string, Element) {
     value := ""
     for len(lines) > 0 {
 	line := lines[0]
@@ -115,39 +115,39 @@ func parseParagraph(lines []string) ([]string, Token) {
 	value += line
 	lines = lines[1:]
     }
-    return lines, Token{TokenParagraph, 0, value}
+    return lines, Element{ElemParagraph, 0, value}
 }
 
-func parseToken(lines []string) ([]string, Token) {
+func parseElement(lines []string) ([]string, Element) {
     line := lines[0]
-    token := Token{}
+    elem := Element{}
 
     if len(line) == 0 {
 	lines = lines[1:]
-	return lines, token
+	return lines, elem
     }
 
     switch line[0] {
     case '#':
-	lines, token = parseHeading(lines)
+	lines, elem = parseHeading(lines)
     case '>':
-	lines, token = parseBlockQuote(lines)
+	lines, elem = parseBlockQuote(lines)
     default:
-	lines, token = parseParagraph(lines)
+	lines, elem = parseParagraph(lines)
     }
-    return lines, token
+    return lines, elem
 }
 
-func parse(source string) []Token {
+func parse(source string) []Element {
     lines := strings.Split(source, "\n")
-    tokens := []Token{}
+    elems := []Element{}
 
     for len(lines) > 0 {
-	token := Token{}
-	lines, token = parseToken(lines)
-	tokens = append(tokens, token)
+	elem := Element{}
+	lines, elem = parseElement(lines)
+	elems = append(elems, elem)
     }
-    return tokens
+    return elems
 }
 
 func main() {
@@ -158,8 +158,8 @@ func main() {
 	panic("failed to read file")
     }
 
-    tokens := parse(content)
-    for _, token := range tokens {
-	fmt.Printf(token.toString())
+    elems := parse(content)
+    for _, elem := range elems {
+	fmt.Printf(elem.toString())
     }
 }
