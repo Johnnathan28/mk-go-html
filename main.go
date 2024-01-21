@@ -39,16 +39,18 @@ const (
     TokenUnknown TokenKind = iota
     TokenHeading
     TokenParagraph
+    TokenBlockQuote
     TokenCount
 )
 
 func (kind TokenKind) toString() string {
-    if TokenCount > 3 {
+    if TokenCount > 4 {
 	panic("missing name of new token added")
     }
     switch kind {
 	case TokenHeading: return "TokenHeading"
 	case TokenParagraph: return "TokenParagraph"
+	case TokenBlockQuote: return "TokenBlockQuote"
     }
     return "TokenUnknown" 
 }
@@ -63,17 +65,41 @@ func (t *Token) toString() string {
     return fmt.Sprintf("Token {%s, %d, '%s'}\n", t.kind.toString(), t.level, t.value)
 }
 
-func parseHeading(line string) Token {
+func parseHeading(lines []string) ([]string, Token) {
+    line := lines[0]
     i := 0
     for ; i < len(line); i += 1 {
 	if line[i] != '#' {
 	    break
 	}
     }
+    lines = lines[1:]
     if i > 6 {
-	return Token{TokenUnknown, 0, ""} // todo: handle heading greater than 6 levels.
+	// note: Not so sure about how handle more than 6 hashtags for titles
+	// it should be handled as a paragraph? or a error? should it be ignored?
+	return lines, Token{TokenUnknown, 0, ""}
     }
-    return Token{TokenHeading, i, strings.Trim(line[i:], " ")}
+    return lines, Token{TokenHeading, i, strings.Trim(line[i:], " ")}
+}
+
+func parseBlockQuote(lines []string) ([]string, Token) {
+    value := ""
+    newLine := false
+    for len(lines) > 0 && len(lines[0]) > 0 && lines[0][0] == '>' {
+	lineValue := strings.Trim(lines[0][1:], " ")
+	if len(lineValue) > 0 {
+	    if len(value) > 0 && !newLine {
+		value += " "
+	    }
+	    newLine = false
+	} else {
+	    value += "  " // todo: this should be a newline.
+	    newLine = true
+	}
+	value += lineValue
+	lines = lines[1:]
+    }
+    return lines[1:], Token{TokenBlockQuote, 0, value}
 }
 
 func parseParagraph(lines []string) ([]string, Token) {
@@ -92,25 +118,33 @@ func parseParagraph(lines []string) ([]string, Token) {
     return lines, Token{TokenParagraph, 0, value}
 }
 
+func parseToken(lines []string) ([]string, Token) {
+    line := lines[0]
+    token := Token{}
+
+    if len(line) == 0 {
+	lines = lines[1:]
+	return lines, token
+    }
+
+    switch line[0] {
+    case '#':
+	lines, token = parseHeading(lines)
+    case '>':
+	lines, token = parseBlockQuote(lines)
+    default:
+	lines, token = parseParagraph(lines)
+    }
+    return lines, token
+}
+
 func parse(source string) []Token {
     lines := strings.Split(source, "\n")
     tokens := []Token{}
 
-    for len(lines) > 0 { // todo: factor this for loop to a parseToken function.
-	line := lines[0]
+    for len(lines) > 0 {
 	token := Token{}
-
-	if len(line) > 0 {
-	    switch line[0] {
-		case '#':
-		    token = parseHeading(line)
-		default:
-		    lines, token = parseParagraph(lines)
-	    }
-
-	}
-
-	lines = lines[1:] // fix: when paragraph eat lines we should not do it here.
+	lines, token = parseToken(lines)
 	tokens = append(tokens, token)
     }
     return tokens
