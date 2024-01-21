@@ -37,6 +37,10 @@ type ElemKind int
 
 const (
     ElemUnknown ElemKind = iota
+    ElemText
+    ElemBold
+    ElemItalic
+    ElemBoldItalic
     ElemHeading
     ElemParagraph
     ElemBlockQuote
@@ -44,10 +48,14 @@ const (
 )
 
 func (kind ElemKind) toString() string {
-    if ElemCount > 4 {
+    if ElemCount > 8 {
 	panic("missing name of new token added")
     }
     switch kind {
+	case ElemText: return "ElemText"
+	case ElemBold: return "ElemBold"
+	case ElemItalic: return "ElemItalic"
+	case ElemBoldItalic: return "ElemBoldItalic"
 	case ElemHeading: return "ElemHeading"
 	case ElemParagraph: return "ElemParagraph"
 	case ElemBlockQuote: return "ElemBlockQuote"
@@ -59,10 +67,20 @@ type Element struct {
     kind  ElemKind
     level int
     value string
+    inner []Element
 }
 
-func (t *Element) toString() string {
-    return fmt.Sprintf("Element {%s, %d, '%s'}\n", t.kind.toString(), t.level, t.value)
+func newElement() Element {
+    return Element{ElemUnknown, 0, "", []Element{}}
+}
+
+func (e *Element) toString() string {
+    s := fmt.Sprintf("Element(%s:%d)\n", e.kind.toString(), e.level)
+    s += fmt.Sprintf(" '%s'\n", e.value)
+    for i, inner := range e.inner {
+	s += fmt.Sprintf(" %d: [%s:'%s']\n", i, inner.kind.toString(), inner.value)
+    }
+    return s
 }
 
 func parseHeading(lines []string) ([]string, Element) {
@@ -77,9 +95,9 @@ func parseHeading(lines []string) ([]string, Element) {
     if i > 6 {
 	// note: Not so sure about how handle more than 6 hashtags for titles
 	// it should be handled as a paragraph? or a error? should it be ignored?
-	return lines, Element{ElemUnknown, 0, ""}
+	return lines, newElement()
     }
-    return lines, Element{ElemHeading, i, strings.Trim(line[i:], " ")}
+    return lines, Element{ElemHeading, i, strings.Trim(line[i:], " "), []Element{}}
 }
 
 func parseBlockQuote(lines []string) ([]string, Element) {
@@ -99,23 +117,65 @@ func parseBlockQuote(lines []string) ([]string, Element) {
 	value += lineValue
 	lines = lines[1:]
     }
-    return lines[1:], Element{ElemBlockQuote, 0, value}
+    return lines[1:], Element{ElemBlockQuote, 0, value, []Element{}}
 }
 
 func parseParagraph(lines []string) ([]string, Element) {
     value := ""
-    for len(lines) > 0 {
-	line := lines[0]
-	if len(line) == 0 {
-	    break
-	}
+
+    for len(lines) > 0 && len(lines[0]) > 0 {
 	if len(value) > 0 {
 	    value += " "
 	}
-	value += line
+	value += lines[0]
 	lines = lines[1:]
     }
-    return lines, Element{ElemParagraph, 0, value}
+
+    bold := false
+    italic := false
+    boldItalic := false
+
+    inner := []Element{}
+
+    tmp := ""
+    buff := value
+
+    for len(buff) > 0 {
+	if strings.HasPrefix(buff, "***") || strings.HasPrefix(buff, "___") {
+	    buff = buff[3:]
+	    if boldItalic {
+		inner = append(inner, Element{ElemBoldItalic, 0, tmp, []Element{}})
+	    } else {
+		inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
+	    }
+	    boldItalic = !boldItalic
+	    tmp = ""
+	} else if strings.HasPrefix(buff, "**") || strings.HasPrefix(buff, "__") {
+	    buff = buff[2:]
+	    if bold {
+		inner = append(inner, Element{ElemBold, 0, tmp, []Element{}})
+	    } else {
+		inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
+	    }
+	    bold = !bold
+	    tmp = ""
+	} else if strings.HasPrefix(buff, "*") || strings.HasPrefix(buff, "_") {
+	    buff = buff[1:]
+	    if italic {
+		inner = append(inner, Element{ElemItalic, 0, tmp, []Element{}})
+	    } else {
+		inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
+	    }
+	    italic = !italic
+	    tmp = ""
+	}
+
+	tmp += buff[:1]
+	buff = buff[1:]
+    }
+
+    inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
+    return lines, Element{ElemParagraph, 0, value, inner}
 }
 
 func parseElement(lines []string) ([]string, Element) {
@@ -160,6 +220,6 @@ func main() {
 
     elems := parse(content)
     for _, elem := range elems {
-	fmt.Printf(elem.toString())
+	fmt.Printf("%s\n", elem.toString())
     }
 }

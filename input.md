@@ -3,11 +3,11 @@
 ### classes
 
 Warrior - This define a class for characters who
-want to be flexible when fighting, being strong
-and fast.
+want to be flexible when fighting, being **strong**
+and _fast_.
 
 Tank - This define a class for characters who want
-to be as strong as possible, and destroy everything
+to be as strong as possible, and ***destroy*** everything
 in their way.
 
 ### citations
