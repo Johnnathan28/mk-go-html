@@ -230,7 +230,7 @@ func intoHTML(elements []Element) string {
 	    fmtString := "<li>%s</li>\n"
 	    result += fmt.Sprintf(fmtString, elem.value)
 	case ElemOrderedList:
-	    fmtString := "<ul>\n%s</ul>\n"
+	    fmtString := "<ol>\n%s</ol>\n"
 	    result += fmt.Sprintf(fmtString, indentString(intoHTML(elem.inner)))
 	default:
 	    panic("intoHTML: Unknown element kind")
