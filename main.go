@@ -83,9 +83,9 @@ func newElement() Element {
 
 func (e *Element) toString() string {
     s := fmt.Sprintf("Element(%s:%d)\n", e.kind.toString(), e.level)
-    s += fmt.Sprintf(" '%s'\n", e.value)
+    s += fmt.Sprintf(" \"%s\"\n", e.value)
     for i, inner := range e.inner {
-	s += fmt.Sprintf(" %d: [%s:'%s']\n", i, inner.kind.toString(), inner.value)
+	s += fmt.Sprintf(" %d: [%s:\"%s\"]\n", i, inner.kind.toString(), inner.value)
     }
     return s
 }
