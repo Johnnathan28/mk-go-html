@@ -129,7 +129,6 @@ func parseBlockQuote(lines []string) ([]string, Element) {
 
 func parseParagraph(lines []string) ([]string, Element) {
     value := ""
-
     for len(lines) > 0 && len(lines[0]) > 0 {
 	if len(value) > 0 {
 	    value += " "
@@ -137,52 +136,7 @@ func parseParagraph(lines []string) ([]string, Element) {
 	value += lines[0]
 	lines = lines[1:]
     }
-
-    bold := false
-    italic := false
-    boldItalic := false
-
-    inner := []Element{}
-
-    tmp := ""
-    buff := value
-
-    for len(buff) > 0 {
-	if strings.HasPrefix(buff, "***") || strings.HasPrefix(buff, "___") {
-	    buff = buff[3:]
-	    if boldItalic {
-		inner = append(inner, Element{ElemBoldItalic, 0, tmp, []Element{}})
-	    } else {
-		inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
-	    }
-	    boldItalic = !boldItalic
-	    tmp = ""
-	} else if strings.HasPrefix(buff, "**") || strings.HasPrefix(buff, "__") {
-	    buff = buff[2:]
-	    if bold {
-		inner = append(inner, Element{ElemBold, 0, tmp, []Element{}})
-	    } else {
-		inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
-	    }
-	    bold = !bold
-	    tmp = ""
-	} else if strings.HasPrefix(buff, "*") || strings.HasPrefix(buff, "_") {
-	    buff = buff[1:]
-	    if italic {
-		inner = append(inner, Element{ElemItalic, 0, tmp, []Element{}})
-	    } else {
-		inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
-	    }
-	    italic = !italic
-	    tmp = ""
-	}
-
-	tmp += buff[:1]
-	buff = buff[1:]
-    }
-
-    inner = append(inner, Element{ElemText, 0, tmp, []Element{}})
-    return lines, Element{ElemParagraph, 0, value, inner}
+    return lines, Element{ElemParagraph, 0, value, []Element{}}
 }
 
 func parseElement(lines []string) ([]string, Element) {
