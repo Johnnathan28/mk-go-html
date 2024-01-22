@@ -48,19 +48,26 @@ const (
 )
 
 func (kind ElemKind) toString() string {
-    if ElemCount > 8 {
-	panic("missing name of new token added")
-    }
     switch kind {
-	case ElemText: return "ElemText"
-	case ElemBold: return "ElemBold"
-	case ElemItalic: return "ElemItalic"
-	case ElemBoldItalic: return "ElemBoldItalic"
-	case ElemHeading: return "ElemHeading"
-	case ElemParagraph: return "ElemParagraph"
-	case ElemBlockQuote: return "ElemBlockQuote"
+    case ElemText:
+	return "ElemText"
+    case ElemBold:
+	return "ElemBold"
+    case ElemItalic:
+	return "ElemItalic"
+    case ElemBoldItalic:
+	return "ElemBoldItalic"
+    case ElemHeading:
+	return "ElemHeading"
+    case ElemParagraph:
+	return "ElemParagraph"
+    case ElemBlockQuote:
+	return "ElemBlockQuote"
+    case ElemUnknown:
+	return "ElemUnknown"
+    default:
+	panic("Unknown element name")
     }
-    return "ElemUnknown" 
 }
 
 type Element struct {
