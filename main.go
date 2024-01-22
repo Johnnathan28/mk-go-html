@@ -5,6 +5,7 @@ import (
     "os"
     "fmt"
     "strings"
+    "unicode"
 )
 
 func readFile(filePath string) (string, error) {
@@ -33,6 +34,20 @@ func readFile(filePath string) (string, error) {
     return string(buffer), nil
 }
 
+func preffixLines(s string, with string) string {
+    result := ""
+    for _, line := range strings.Split(s, "\n") {
+	if len(line) > 0 {
+	    result += with + line + "\n"
+	}
+    }
+    return result
+}
+
+func indentString(s string) string {
+    return preffixLines(s, "    ")
+}
+
 type ElemKind int
 
 const (
@@ -44,6 +59,8 @@ const (
     ElemHeading
     ElemParagraph
     ElemBlockQuote
+    ElemListItem
+    ElemOrderedList
     ElemCount
 )
 
@@ -139,6 +156,20 @@ func parseParagraph(lines []string) ([]string, Element) {
     return lines, Element{ElemParagraph, 0, value, []Element{}}
 }
 
+func parseOrderedList(lines []string) ([]string, Element) {
+    items := []Element{}
+    for len(lines) > 0 {
+	line := lines[0]
+	if len(line) < 2 || !unicode.IsDigit(rune(line[0])) || line[1] != '.' {
+	    break
+	}
+	line = strings.Trim(line[2:], " ")
+	items = append(items, Element{ElemListItem, 0, line, []Element{}})
+	lines = lines[1:]
+    }
+    return lines, Element{ElemOrderedList, 0, "", items}
+}
+
 func parseElement(lines []string) ([]string, Element) {
     line := lines[0]
     elem := Element{}
@@ -148,11 +179,13 @@ func parseElement(lines []string) ([]string, Element) {
 	return lines, elem
     }
 
-    switch line[0] {
-    case '#':
+    switch c := line[0]; {
+    case c == '#':
 	lines, elem = parseHeading(lines)
-    case '>':
+    case c == '>':
 	lines, elem = parseBlockQuote(lines)
+    case unicode.IsDigit(rune(c)):
+	lines, elem = parseOrderedList(lines)
     default:
 	lines, elem = parseParagraph(lines)
     }
@@ -186,11 +219,19 @@ func intoHTML(elements []Element) string {
 	case ElemBoldItalic:
 	    panic("todo: intoHTML: ElemBoldItalic")
 	case ElemHeading:
-	    result += fmt.Sprintf("<h%d>%s</h%d>\n", elem.level, elem.value, elem.level)
+	    fmtString := "<h%d>%s</h%d>\n"
+	    result += fmt.Sprintf(fmtString, elem.level, elem.value, elem.level)
 	case ElemParagraph:
-	    panic("todo: intoHTML: ElemParagraph")
+	    fmtString := "<p>%s</p>\n"
+	    result += fmt.Sprintf(fmtString, elem.value)
 	case ElemBlockQuote:
 	    panic("todo: intoHTML: ElemBlockQuote")
+	case ElemListItem:
+	    fmtString := "<li>%s</li>\n"
+	    result += fmt.Sprintf(fmtString, elem.value)
+	case ElemOrderedList:
+	    fmtString := "<ul>\n%s</ul>\n"
+	    result += fmt.Sprintf(fmtString, indentString(intoHTML(elem.inner)))
 	default:
 	    panic("intoHTML: Unknown element kind")
 	}
@@ -246,6 +287,7 @@ func test() {
 	fmt.Printf("Compare '%s' with '%s'\n", file.Name(), fileNameB)
 	if html != fileContentB {
 	    fmt.Printf(" - Fail\n")
+	    fmt.Printf("GOT:\n^%s$\nEXPECTED:\n^%s$\n", html, fileContentB)
 	} else {
 	    fmt.Printf(" - Success\n")
 	}
