@@ -171,16 +171,111 @@ func parse(source string) []Element {
     return elems
 }
 
-func main() {
-    filePath := "./input.md"
+func intoHTML(elements []Element) string {
+    result := ""
+    for _, elem := range elements {
+	switch elem.kind {
+	case ElemUnknown:
+	    result += ""
+	case ElemText:
+	    result += elem.value
+	case ElemBold:
+	    panic("todo: intoHTML: ElemBold")
+	case ElemItalic:
+	    panic("todo: intoHTML: ElemItalic")
+	case ElemBoldItalic:
+	    panic("todo: intoHTML: ElemBoldItalic")
+	case ElemHeading:
+	    result += fmt.Sprintf("<h%d>%s</h%d>\n", elem.level, elem.value, elem.level)
+	case ElemParagraph:
+	    panic("todo: intoHTML: ElemParagraph")
+	case ElemBlockQuote:
+	    panic("todo: intoHTML: ElemBlockQuote")
+	default:
+	    panic("intoHTML: Unknown element kind")
+	}
+    }
+    return result
+}
 
-    content, err := readFile(filePath)
+func test() {
+    dir := "./tests"
+
+    files, err := os.ReadDir(dir)
     if err != nil {
-	panic("failed to read file")
+	fmt.Printf("ERROR: %s\n", err)
+	os.Exit(1)
     }
 
-    elems := parse(content)
-    for _, elem := range elems {
-	fmt.Printf("%s\n", elem.toString())
+    for _, file := range files {
+	fileName, isMarkdown := strings.CutSuffix(file.Name(), ".md")
+	if !isMarkdown {
+	    continue
+	}
+
+	fileNameB := ""
+	for _, fileb := range files {
+	    isHtml := strings.HasSuffix(fileb.Name(), ".html")
+	    isEquivalent := strings.HasPrefix(fileb.Name(), fileName)
+
+	    if isHtml && isEquivalent {
+		fileNameB = fileb.Name()
+	    }
+	}
+
+	if fileNameB == "" {
+	    fmt.Printf("ERROR: missing equivalent HTML file for: %s\n", fileName)
+	    os.Exit(1)
+	}
+
+	src, err := readFile(dir + "/" + file.Name())
+	if err != nil {
+	    fmt.Printf("ERROR: %s\n", err)
+	    os.Exit(1)
+	}
+
+	elems := parse(src)
+	html := intoHTML(elems)
+
+	fileContentB, err := readFile(dir + "/" + fileNameB)
+	if err != nil {
+	    fmt.Printf("ERROR: %s\n", err)
+	    os.Exit(1)
+	}
+
+	fmt.Printf("Compare '%s' with '%s'\n", file.Name(), fileNameB)
+	if html != fileContentB {
+	    fmt.Printf(" - Fail\n")
+	} else {
+	    fmt.Printf(" - Success\n")
+	}
+    }
+
+    os.Exit(0)
+}
+
+func main() {
+    args := os.Args
+    _, args = args[0], args[1:]
+
+    if len(args) == 0 {
+	filePath := "./input.md"
+
+	content, err := readFile(filePath)
+	if err != nil {
+	    panic("failed to read file")
+	}
+
+	elems := parse(content)
+	for _, elem := range elems {
+	    fmt.Printf("%s\n", elem.toString())
+	}
+	os.Exit(0)
+    } else if args[0] == "test" {
+	test()
+	os.Exit(1)
+    } else {
+	fmt.Printf("ERROR: Unknown command: %s\n", args[0])
+	os.Exit(1)
     }
 }
