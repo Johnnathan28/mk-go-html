@@ -60,6 +60,7 @@ const (
     ElemParagraph
     ElemBlockQuote
     ElemListItem
+    ElemUnorderedList
     ElemOrderedList
     ElemCount
 )
@@ -156,6 +157,24 @@ func parseParagraph(lines []string) ([]string, Element) {
     return lines, Element{ElemParagraph, 0, value, []Element{}}
 }
 
+func isUnorderedListCharacter(char byte) bool {
+    return char == '-' || char == '*' || char == '+'
+}
+
+func parseUnorderedList(lines []string) ([]string, Element) {
+    items := []Element{}
+    for len(lines) > 0 {
+	line := lines[0]
+	if len(line) == 0 || !isUnorderedListCharacter(line[0]) {
+	    break
+	}
+	line = strings.Trim(line[1:], " ")
+	items = append(items, Element{ElemListItem, 0, line, []Element{}})
+	lines = lines[1:]
+    }
+    return lines, Element{ElemUnorderedList, 0, "", items}
+}
+
 func parseOrderedList(lines []string) ([]string, Element) {
     items := []Element{}
     for len(lines) > 0 {
@@ -184,6 +203,8 @@ func parseElement(lines []string) ([]string, Element) {
 	lines, elem = parseHeading(lines)
     case c == '>':
 	lines, elem = parseBlockQuote(lines)
+    case isUnorderedListCharacter(c):
+	lines, elem = parseUnorderedList(lines)
     case unicode.IsDigit(rune(c)):
 	lines, elem = parseOrderedList(lines)
     default:
@@ -229,6 +250,9 @@ func intoHTML(elements []Element) string {
 	case ElemListItem:
 	    fmtString := "<li>%s</li>\n"
 	    result += fmt.Sprintf(fmtString, elem.value)
+	case ElemUnorderedList:
+	    fmtString := "<ul>\n%s</ul>\n"
+	    result += fmt.Sprintf(fmtString, indentString(intoHTML(elem.inner)))
 	case ElemOrderedList:
 	    fmtString := "<ol>\n%s</ol>\n"
 	    result += fmt.Sprintf(fmtString, indentString(intoHTML(elem.inner)))
